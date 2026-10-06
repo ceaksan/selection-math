@@ -1,5 +1,6 @@
 import AppKit
 import Carbon
+import MathCore
 import SwiftUI
 
 struct SettingsView: View {
@@ -7,6 +8,7 @@ struct SettingsView: View {
     @AppStorage("appearance") private var appearance: AppAppearance = .system
     @State private var recording: ShortcutAction?
     @State private var error: String?
+    @State private var lastFixedDecimals = ResultDecimals.fixedDefault
     @State private var monitor: Any?
 
     var body: some View {
@@ -20,6 +22,7 @@ struct SettingsView: View {
                         SoftSegmented(options: AppAppearance.allCases.map { ($0, L("appearance." + $0.rawValue)) },
                                       selection: $appearance)
                     }
+                    decimals
                     about
                 }
                 .padding(.horizontal, 24).padding(.bottom, 8)
@@ -37,6 +40,40 @@ struct SettingsView: View {
         .foregroundStyle(Design.text).background(Design.canvas)
         .focusEffectDisabled()
         .onDisappear { stopRecording() }
+        .onAppear { if let value = model.resultDecimals { lastFixedDecimals = value } }
+    }
+
+    private var decimals: some View {
+        section(L("decimals")) {
+            SoftSegmented(options: [(false, L("decimals.auto")), (true, L("decimals.fixed"))], selection: fixedDecimals)
+                .accessibilityLabel(L("decimals"))
+            if let value = model.resultDecimals {
+                HStack(spacing: 8) {
+                    Text(L("decimals.places")).font(.system(size: 13))
+                    Spacer()
+                    Button { setFixedDecimals(value - 1) } label: { Image(systemName: "minus") }
+                        .buttonStyle(SoftButtonStyle(compact: true)).disabled(value == 0)
+                        .accessibilityLabel(L("decimals.fewer"))
+                    Text("\(value)").font(.system(size: 13, weight: .medium, design: .rounded)).monospacedDigit()
+                        .frame(minWidth: 18).accessibilityLabel(L("decimals.places") + " \(value)")
+                    Button { setFixedDecimals(value + 1) } label: { Image(systemName: "plus") }
+                        .buttonStyle(SoftButtonStyle(compact: true)).disabled(value == NumberParser.maximumDecimals)
+                        .accessibilityLabel(L("decimals.more"))
+                }
+            }
+            Text(L(model.resultDecimals == nil ? "decimals.hint.auto" : "decimals.hint.fixed"))
+                .font(.system(size: 12)).foregroundStyle(Design.muted).fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var fixedDecimals: Binding<Bool> {
+        Binding(get: { model.resultDecimals != nil },
+                set: { model.resultDecimals = $0 ? lastFixedDecimals : nil })
+    }
+
+    private func setFixedDecimals(_ value: Int) {
+        model.resultDecimals = value
+        lastFixedDecimals = model.resultDecimals ?? ResultDecimals.fixedDefault
     }
 
     private var shortcuts: some View {
@@ -143,5 +180,17 @@ struct SettingsView: View {
     private func removeMonitor() {
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
+    }
+}
+
+enum ResultDecimals {
+    static let key = "resultDecimals"
+    static let fixedDefault = 2
+
+    static func clamp(_ value: Int) -> Int { min(max(value, 0), NumberParser.maximumDecimals) }
+
+    static func load(from defaults: UserDefaults) -> Int? {
+        guard let stored = defaults.object(forKey: key) as? Int, stored >= 0 else { return nil }
+        return clamp(stored)
     }
 }

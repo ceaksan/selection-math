@@ -115,9 +115,25 @@ public enum NumberParser {
         return (style, formatter)
     })
 
-    public static func format(_ value: Decimal, style: NumberStyle) -> String {
-        let number = NSDecimalNumber(decimal: value)
-        return formatters[style]?.string(from: number) ?? number.stringValue
+    public static let maximumDecimals = 8
+
+    public static func format(_ value: Decimal, style: NumberStyle, decimals: Int? = nil) -> String {
+        guard let decimals else {
+            let number = NSDecimalNumber(decimal: value)
+            return formatters[style]?.string(from: number) ?? number.stringValue
+        }
+        let places = min(max(decimals, 0), maximumDecimals)
+        var source = value
+        var rounded = Decimal()
+        NSDecimalRound(&rounded, &source, places, .plain)
+        if rounded.isZero { rounded = 0 }
+        let formatter = NumberFormatter()
+        formatter.locale = style.locale
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = places
+        formatter.maximumFractionDigits = places
+        let number = NSDecimalNumber(decimal: rounded)
+        return formatter.string(from: number) ?? number.stringValue
     }
 
     public static func editable(_ operand: Operand, style: NumberStyle) -> String {
@@ -148,13 +164,14 @@ public struct Calculation {
     public let isPercent: Bool
     public let isPercentagePoints: Bool
 
-    public func text(style: NumberStyle) -> String {
-        if isPercentagePoints { return copyText(style: style) + " pp" }
-        return NumberParser.format(isPercent ? value * 100 : value, style: style) + (isPercent ? "%" : "")
+    public func text(style: NumberStyle, decimals: Int? = nil) -> String {
+        if isPercentagePoints { return copyText(style: style, decimals: decimals) + " pp" }
+        return NumberParser.format(isPercent ? value * 100 : value, style: style, decimals: decimals) + (isPercent ? "%" : "")
     }
 
-    public func copyText(style: NumberStyle) -> String {
-        isPercentagePoints ? NumberParser.format(value * 100, style: style) : text(style: style)
+    public func copyText(style: NumberStyle, decimals: Int? = nil) -> String {
+        isPercentagePoints ? NumberParser.format(value * 100, style: style, decimals: decimals)
+            : text(style: style, decimals: decimals)
     }
 }
 

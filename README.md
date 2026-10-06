@@ -26,6 +26,8 @@ Releases are signed ad hoc, so macOS can ask for permissions again after an upda
 
 Use the compact view button in the header to shrink the panel to the result, the latest three numbers, and the capture actions. The full view button restores the complete panel.
 
+The button next to Copy result adds the displayed result to Enter numbers without touching the clipboard, so it can be combined with new values.
+
 ### Shortcuts
 
 | Action | Default |
@@ -51,7 +53,7 @@ The initial format matches English-formatted tables: `310,872` is 310872 and `3.
 - Percentages keep their label and are stored as fractions. Addition, subtraction, and average of percentages display a percentage. A difference between percentages is shown in percentage points (`pp`), and Copy result copies the bare number.
 - Mixed scalar and percentage arithmetic uses the numeric values, so `100 + 10%` is `100.1`.
 
-Subtraction and division follow the visible order. Ratio is first / second. Percentage change is (second - first) / first × 100. Ratio and percentage change require exactly two operands. Division by zero and numeric overflow produce an error. Decimal arithmetic avoids binary floating-point artifacts; displayed results round to eight fractional digits.
+Subtraction and division follow the visible order. Ratio is first / second. Percentage change is (second - first) / first × 100. Ratio and percentage change require exactly two operands. Division by zero and numeric overflow produce an error. Decimal arithmetic avoids binary floating-point artifacts; by default the displayed result shows only the decimals it needs, up to eight, and whole numbers show none. Under Settings > Result decimals, Fixed shows a chosen number of decimal places from 0 to 8, so `5` reads `5.00` with two. Rounding is half away from zero and applies to the displayed, copied, and inserted result only; operands and the calculation keep their full precision.
 
 ## Privacy
 
@@ -123,6 +125,8 @@ Automated tests cover parsing, arithmetic, edits, ordering, reset and its undo, 
 | Unparsed number-like fragments are reported | `testUnreadableNumberLikeTokensAreReportedAsSkipped`, `testCommaBeforeSuffixSkipsTheWholeFragment` |
 | A tab after a placeholder sign does not negate the next cell | `testTabAfterPlaceholderSignDoesNotNegateNextCell` |
 | Swapping two operands reverses percentage change | `testSwapPairReversesTwoOperandsForPercentageChange` |
+| Result decimals pad, round half away from zero, clamp to 0 to 8, and persist | `testFixedDecimalsPadAndRoundHalfAwayFromZero`, `testOutOfRangeDecimalsAreClamped`, `testResultTextAndCopyUseTheChosenDecimals`, `testDefaultsToAutomaticAndPersistsFixedAndClampedValues` |
+| An inserted result is appended and parses back to the same value | `testResultIsAppendedAfterExistingEntries`, `testInsertedResultParsesBackToTheSameValue` |
 | Showing the panel does not focus a control automatically; an active text edit keeps focus | `testBecomingKeyClearsAutomaticControlFocus`, `testBecomingKeyKeepsAnActiveTextEdit` |
 | An edit keeps the format it started with | `testEditKeepsTheFormatItStartedWith` |
 | Corrupt or invalid shortcuts fall back to defaults; changes persist through the model | `testOutOfRangeStoredShortcutsFallBackToDefaults`, `testSettingAShortcutThroughTheModelRegistersAndPersistsIt` |

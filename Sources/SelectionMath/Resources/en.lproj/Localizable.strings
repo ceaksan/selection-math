@@ -48,6 +48,15 @@
 "undoCapture" = "Undo last selection";
 "reset" = "Reset";
 "copyResult" = "Copy result";
+"useResult" = "Add result to Enter numbers";
+"decimals" = "Result decimals";
+"decimals.auto" = "Auto";
+"decimals.fixed" = "Fixed";
+"decimals.places" = "Decimal places";
+"decimals.fewer" = "Fewer decimal places";
+"decimals.more" = "More decimal places";
+"decimals.hint.auto" = "Shows only the decimals the result needs, up to 8. Whole numbers have none.";
+"decimals.hint.fixed" = "Always shows this many digits after the decimal point, rounding half away from zero.";
 "format" = "Number format";
 "manual" = "Enter numbers";
 "manual.placeholder" = "120 | 80";

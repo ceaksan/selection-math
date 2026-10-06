@@ -49,6 +49,13 @@ final class AppModel: ObservableObject {
             applyCompact(compact)
         }
     }
+    @Published var resultDecimals: Int? {
+        didSet {
+            let clamped = resultDecimals.map(ResultDecimals.clamp)
+            if clamped != resultDecimals { resultDecimals = clamped }
+            defaults.set(clamped ?? -1, forKey: ResultDecimals.key)
+        }
+    }
     var showPanel: () -> Void = {}
     var focusPanel: () -> Void = {}
     var applyCompact: (Bool) -> Void = { _ in }
@@ -66,6 +73,7 @@ final class AppModel: ObservableObject {
         self.hotkeys = hotkeys ?? GlobalHotkeys()
         shortcuts = ShortcutStore.load(from: defaults)
         compact = defaults.bool(forKey: "compactMode")
+        resultDecimals = ResultDecimals.load(from: defaults)
     }
 
     func start() {
@@ -244,7 +252,7 @@ final class AppModel: ObservableObject {
         guard !capturing else { return }
         guard let result = try? session.result() else { return }
         NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(result.copyText(style: session.style), forType: .string)
+        NSPasteboard.general.setString(result.copyText(style: session.style, decimals: resultDecimals), forType: .string)
         inform("status.copied")
     }
 

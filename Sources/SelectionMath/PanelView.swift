@@ -5,6 +5,7 @@ struct PanelView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var session: CalculatorSession
     @State private var manualText = ""
+    @State private var manualExpanded = false
     @AppStorage("onboardingCompleted") private var onboardingCompleted = false
     @AppStorage("appearance") private var appearance: AppAppearance = .system
 
@@ -156,6 +157,13 @@ struct PanelView: View {
             .disabled(model.capturing || (try? session.result()) == nil)
     }
 
+    private var useResultButton: some View {
+        Button(action: useResult) { Image(systemName: "text.insert") }
+            .buttonStyle(SoftButtonStyle(compact: true)).help(L("useResult"))
+            .accessibilityLabel(L("useResult")).accessibilityIdentifier("use-result")
+            .disabled(model.capturing || (try? session.result()) == nil)
+    }
+
     private var swapButton: some View {
         Button(action: session.swapPair) { Image(systemName: "arrow.left.arrow.right") }
             .buttonStyle(SoftButtonStyle(compact: true)).help(L("swapPair"))
@@ -168,6 +176,7 @@ struct PanelView: View {
             HStack {
                 Text(L("operation." + session.operation.rawValue)).font(.system(size: 12, weight: .semibold))
                 Spacer()
+                useResultButton
                 copyButton
             }
             resultValue(size: 44)
@@ -184,7 +193,7 @@ struct PanelView: View {
         } else {
             switch Result(catching: { try session.result() }) {
             case .success(let result):
-                Text(result.text(style: session.style))
+                Text(result.text(style: session.style, decimals: model.resultDecimals))
                     .font(.system(size: size, weight: .medium, design: .rounded))
                     .monospacedDigit().lineLimit(1).minimumScaleFactor(0.35)
                     .textSelection(.enabled).accessibilityIdentifier("calculation-result")
@@ -243,7 +252,7 @@ struct PanelView: View {
         } label: {
             secondaryOperationLabel(active: active)
         }
-        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().focusable(false).focusEffectDisabled().help(L("operations.more"))
+        .menuStyle(.button).buttonStyle(.plain).menuIndicator(.hidden).fixedSize().focusable(false).focusEffectDisabled().help(L("operations.more"))
         .accessibilityLabel(label)
         .accessibilityAddTraits(active ? .isSelected : [])
     }
@@ -333,7 +342,7 @@ struct PanelView: View {
                         .frame(width: 170).disabled(model.capturing)
                         .accessibilityLabel(L("format"))
                 }
-                DisclosureGroup(L("manual")) {
+                DisclosureGroup(L("manual"), isExpanded: $manualExpanded) {
                     HStack {
                         TextField(L("manual.placeholder"), text: $manualText).onSubmit(addManual)
                             .textFieldStyle(.roundedBorder).focusEffectDisabled(false)
@@ -346,22 +355,33 @@ struct PanelView: View {
         }.padding(.horizontal, Design.inset).padding(.top, 10).padding(.bottom, 12)
     }
 
+    @ViewBuilder
     private var messageSlot: some View {
+        if model.capturing || !model.message.isEmpty {
+            statusMessage
+        }
+    }
+
+    private var statusMessage: some View {
         HStack(alignment: .center, spacing: 8) {
             if model.capturing { ProgressView().controlSize(.small).accessibilityLabel(L("transfer.busy")) }
             Text(model.capturing && model.message.isEmpty ? L("transfer.busy") : model.message).font(.caption).foregroundStyle(model.isError ? Design.danger : Design.muted)
                 .lineLimit(3).frame(maxWidth: .infinity, alignment: .leading)
                 .accessibilityIdentifier("status-message")
         }
-        .frame(height: 44, alignment: .center)
-        .opacity(model.message.isEmpty && !model.capturing ? 0 : 1)
-        .accessibilityHidden(model.message.isEmpty && !model.capturing)
+        .frame(minHeight: 32, alignment: .center)
     }
 
     private func iconButton(_ symbol: String, key: String, kind: SoftButtonStyle.Kind = .secondary,
                             action: @escaping () -> Void) -> some View {
         Button(action: action) { Image(systemName: symbol).font(.system(size: 11)).frame(width: 12, height: 28) }
             .buttonStyle(SoftButtonStyle(kind: kind, compact: true)).help(L(key)).accessibilityLabel(L(key))
+    }
+
+    private func useResult() {
+        guard let result = try? session.result() else { return }
+        manualText = ManualEntry.appending(result.copyText(style: session.style, decimals: model.resultDecimals), to: manualText)
+        manualExpanded = true
     }
 
     private func addManual() {
@@ -428,5 +448,12 @@ private struct OperandRow: View {
     private func save() {
         do { try session.edit(operand.id, text: draft, style: editStyle); editing = false }
         catch { editError = true }
+    }
+}
+
+enum ManualEntry {
+    static func appending(_ value: String, to text: String) -> String {
+        let existing = text.trimmingCharacters(in: CharacterSet.whitespaces.union(CharacterSet(charactersIn: "|")))
+        return existing.isEmpty ? value : existing + " | " + value
     }
 }
