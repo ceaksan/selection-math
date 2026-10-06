@@ -2,6 +2,34 @@ import XCTest
 @testable import MathCore
 
 final class CalculatorTests: XCTestCase {
+    func testTabAfterPlaceholderSignDoesNotNegateNextCell() throws {
+        let values = try NumberParser.parse("-\t$ 1,234 | $ -\t5", style: .english)
+        XCTAssertEqual(values.map(\.value), [1234, 5])
+    }
+
+    func testCommaBeforeSuffixSkipsTheWholeFragment() throws {
+        let english = try NumberParser.scan("$1,250K | 40 | 1,2", style: .english)
+        XCTAssertEqual(english.operands.map(\.value), [40, 1, 2])
+        XCTAssertEqual(english.skipped, ["$1,250K"])
+        let turkish = try NumberParser.scan("1,5K | 3", style: .turkish)
+        XCTAssertEqual(turkish.operands.map(\.value), [3])
+        XCTAssertEqual(turkish.skipped, ["1,5K"])
+    }
+
+    @MainActor
+    func testSwapPairReversesTwoOperandsForPercentageChange() throws {
+        let session = CalculatorSession()
+        session.operation = .change
+        try session.accept("150 | 100", source: "Table", generation: session.generation)
+        XCTAssertTrue(session.canSwapPair)
+        session.swapPair()
+        XCTAssertEqual(session.operands.map(\.value), [100, 150])
+        XCTAssertEqual(try session.result().value, Decimal(string: "0.5")!)
+        try session.accept("1", source: "Table", generation: session.generation)
+        XCTAssertFalse(session.canSwapPair)
+        session.swapPair()
+        XCTAssertEqual(session.operands.map(\.value), [100, 150, 1])
+    }
     @MainActor
     func testGroupedTurkishExponentsKeepTheirMagnitude() throws {
         let session = CalculatorSession()

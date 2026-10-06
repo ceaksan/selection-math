@@ -53,9 +53,10 @@ struct PanelView: View {
                     Text(session.operation.symbol + "  " + L("operation." + session.operation.rawValue))
                         .font(.system(size: 12, weight: .semibold))
                 }
-                .menuStyle(.borderlessButton).fixedSize()
+                .menuStyle(.borderlessButton).fixedSize().focusEffectDisabled()
                 .accessibilityLabel(L("operation." + session.operation.rawValue))
                 Spacer()
+                if session.operation == .change && session.canSwapPair { swapButton }
                 copyButton
                 iconButton("arrow.up.left.and.arrow.down.right", key: "compact.exit") { model.compact = false }
             }
@@ -153,6 +154,13 @@ struct PanelView: View {
             .disabled(model.capturing || (try? session.result()) == nil)
     }
 
+    private var swapButton: some View {
+        Button(action: session.swapPair) { Image(systemName: "arrow.left.arrow.right") }
+            .buttonStyle(SoftButtonStyle(compact: true)).help(L("swapPair"))
+            .accessibilityLabel(L("swapPair")).accessibilityIdentifier("swap-pair")
+            .disabled(model.capturing)
+    }
+
     private var resultCard: some View {
         VStack(alignment: .leading, spacing: 9) {
             HStack {
@@ -206,7 +214,7 @@ struct PanelView: View {
                                         in: RoundedRectangle(cornerRadius: 9))
                             .foregroundStyle(session.operation == operation ? Design.accent : Design.muted)
                     }
-                    .buttonStyle(.plain).help(L("operation." + operation.rawValue))
+                    .buttonStyle(.plain).focusEffectDisabled().help(L("operation." + operation.rawValue))
                     .accessibilityLabel(L("operation." + operation.rawValue))
                     .accessibilityIdentifier("operation-" + operation.rawValue)
                     .accessibilityAddTraits(session.operation == operation ? .isSelected : [])
@@ -214,7 +222,11 @@ struct PanelView: View {
                 secondaryOperationMenu
             }.padding(5).background(Design.surface, in: RoundedRectangle(cornerRadius: 13))
             if [.difference, .quotient, .ratio, .change].contains(session.operation) {
-                Text(L("hint." + session.operation.rawValue)).font(.caption2).foregroundStyle(.secondary)
+                HStack(spacing: 8) {
+                    Text(L("hint." + session.operation.rawValue)).font(.caption2).foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    if session.operation == .change && session.canSwapPair { swapButton }
+                }
             }
         }
     }
@@ -229,7 +241,7 @@ struct PanelView: View {
         } label: {
             secondaryOperationLabel(active: active)
         }
-        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().help(L("operations.more"))
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().focusEffectDisabled().help(L("operations.more"))
         .accessibilityLabel(label)
         .accessibilityAddTraits(active ? .isSelected : [])
     }

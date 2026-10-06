@@ -22,7 +22,7 @@ Releases are signed ad hoc, so macOS can ask for permissions again after an upda
 2. Grant Accessibility access. Select a cell or text in another application, then press the Add selection shortcut. Repeat for separate selections; existing operands remain visible. Nothing is collected automatically.
 3. If Accessibility does not expose the selected text, the app sends Copy to the source application, reads the new clipboard text, and restores the previous clipboard. See [Clipboard handling](#clipboard-handling). For screenshots or cells without Copy support, use Capture area and drag around the numbers. This route requires Screen Recording permission. Review and correct the recognized text before pressing Add numbers.
 4. Choose addition, ordered subtraction, multiplication, ordered division, average, ratio, or percentage change.
-5. Edit an operand in place, remove it, change its order, undo the last selection, or reset the calculation. After a reset, the Reset button becomes Undo reset until the next change.
+5. Edit an operand in place, remove it, change its order, undo the last selection, or reset the calculation. With percentage change and exactly two numbers, the swap button next to the formula exchanges first and second. After a reset, the Reset button becomes Undo reset until the next change.
 
 Use the compact view button in the header to shrink the panel to the result, the latest three numbers, and the capture actions. The full view button restores the complete panel.
 
@@ -45,8 +45,8 @@ The initial format matches English-formatted tables: `310,872` is 310872 and `3.
 - Whitespace, line breaks, tabs, and vertical bars separate numbers. In English mode, a comma that does not form a valid thousands group is also a separator.
 - Parenthesized numbers are negative, following spreadsheet convention: `(1,234)` is -1234.
 - A currency symbol may precede the number, with the sign on either side: `-$1,234.56`, `$-5`, and `($7)` are negative. Exponent notation such as `1e3` is read as 1000.
-- Spaces and tabs around a sign or inside parentheses preserve negativity: `-  5` is -5 and `( $1,234.56 )` is -1234.56. Grouped mantissas retain their format in exponent notation: Turkish `1.234.567e2` is 123456700.
-- Number-like fragments that are not plain numbers, such as `Q3` or `1.2K`, are skipped. The other numbers are added and the status message lists what was skipped.
+- Spaces around a sign or inside parentheses preserve negativity: `-  5` is -5 and `( $1,234.56 )` is -1234.56. A tab always separates cells, so a `-` or `$ -` placeholder cell copied from a spreadsheet never negates the next cell. Grouped mantissas retain their format in exponent notation: Turkish `1.234.567e2` is 123456700.
+- Number-like fragments that are not plain numbers, such as `Q3`, `1.2K`, or `$1,250K`, are skipped as a whole. The other numbers are added and the status message lists what was skipped.
 - An edit is read with the number format that was active when editing began.
 - Percentages keep their label and are stored as fractions. Addition, subtraction, and average of percentages display a percentage. A difference between percentages is shown in percentage points (`pp`), and Copy result copies the bare number.
 - Mixed scalar and percentage arithmetic uses the numeric values, so `100 + 10%` is `100.1`.
@@ -120,7 +120,9 @@ Automated tests cover parsing, arithmetic, edits, ordering, reset and its undo, 
 | Accessibility and Copy captures preserve signs, exponents, and skipped warnings | `testCapturePreservesSpacedSignsExponentsAndSkippedWarnings` |
 | Failure of any shortcut rolls back an update or a reset without saving it | `testFailureOfAnotherShortcutRollsBackTheWholeChange`, `testDefaultResetFailurePreservesCustomSettingsAndRegistrations` |
 | A failed registration rollback is reported | `testFailedRollbackReportsUnavailableWithoutPersistingTheChange` |
-| Unparsed number-like fragments are reported | `testUnreadableNumberLikeTokensAreReportedAsSkipped` |
+| Unparsed number-like fragments are reported | `testUnreadableNumberLikeTokensAreReportedAsSkipped`, `testCommaBeforeSuffixSkipsTheWholeFragment` |
+| A tab after a placeholder sign does not negate the next cell | `testTabAfterPlaceholderSignDoesNotNegateNextCell` |
+| Swapping two operands reverses percentage change | `testSwapPairReversesTwoOperandsForPercentageChange` |
 | An edit keeps the format it started with | `testEditKeepsTheFormatItStartedWith` |
 | Corrupt or invalid shortcuts fall back to defaults; changes persist through the model | `testOutOfRangeStoredShortcutsFallBackToDefaults`, `testSettingAShortcutThroughTheModelRegistersAndPersistsIt` |
 | Region selection maps to image pixels; text recognition reads rendered numbers | `testSelectionMapsToImagePixelsOnARetinaScreen`, `testTextRecognitionReadsRenderedNumbers` |

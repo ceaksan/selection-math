@@ -58,6 +58,7 @@
 "remove" = "Remove number";
 "moveUp" = "Move up";
 "moveDown" = "Move down";
+"swapPair" = "Swap first and second";
 "copy" = "Copy";
 "paste" = "Paste";
 "selectAll" = "Select all";

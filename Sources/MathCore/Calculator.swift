@@ -58,11 +58,12 @@ public enum NumberParser {
         let dottedDecimal = style == .turkish ? "|[0-9]+\\.[0-9]+|\\.[0-9]+" : ""
         let digits = "(?:[0-9]{1,3}(?:\(group)[0-9]{3})+(?:\(point)[0-9]+)?\(dottedDecimal)|[0-9]+(?:\(point)[0-9]+)?|\(point)[0-9]+)"
         let number = "\(digits)(?:[eE][-+]?[0-9]+)?"
-        let space = "[\\p{Zs}\\t]*"
-        let percent = "(?:\(space)%)?"
+        let space = "\\p{Zs}*"
+        let percent = "(?:[\\p{Zs}\\t]*%)?"
         let prefix = "(?:[-+−]\(space)(?:\\p{Sc}\(space))?|\\p{Sc}\(space)(?:[-+−]\(space))?)?"
         let parenthesized = "\\(\(space)(?:\\p{Sc}\(space))?\(number)\(percent)\(space)\\)"
-        let pattern = "(?<![\\p{L}\\p{N}_.])(?:\(parenthesized)|\(prefix)\(number)\(percent))(?![\\p{L}\\p{N}_.])"
+        let end = "(?![\\p{L}\\p{N}_.]|,[0-9.,]*[\\p{L}_])"
+        let pattern = "(?<![\\p{L}\\p{N}_.])(?:\(parenthesized)|\(prefix)\(number)\(percent))\(end)"
         let regex = try NSRegularExpression(pattern: pattern)
         return regex.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { Range($0.range, in: text) }
     }
@@ -73,7 +74,8 @@ public enum NumberParser {
             remainder.replaceCharacters(in: NSRange(range, in: text), with: " ")
         }
         let unparsed = remainder as String
-        guard let chunks = try? NSRegularExpression(pattern: "[^\\s|,;]*\\p{N}[^\\s|,;]*") else { return [] }
+        let piece = "(?:[^\\s|,;]|,(?=[0-9]))*"
+        guard let chunks = try? NSRegularExpression(pattern: "\(piece)\\p{N}\(piece)") else { return [] }
         return chunks.matches(in: unparsed, range: NSRange(unparsed.startIndex..., in: unparsed)).compactMap { result in
             guard let range = Range(result.range, in: unparsed) else { return nil }
             return String(unparsed[range]).trimmingCharacters(in: CharacterSet(charactersIn: ",.;:"))
@@ -273,6 +275,13 @@ public final class CalculatorSession: ObservableObject {
               operands.indices.contains(index + offset) else { return }
         operands.swapAt(index, index + offset)
         resetSnapshot = nil
+    }
+
+    public var canSwapPair: Bool { operands.count == 2 }
+
+    public func swapPair() {
+        guard canSwapPair, let first = operands.first else { return }
+        move(first.id, by: 1)
     }
 
     public func undoCapture() {

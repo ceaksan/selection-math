@@ -129,6 +129,7 @@ struct SoftSegmented<Value: Hashable>: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .focusEffectDisabled()
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
