@@ -53,12 +53,14 @@ final class ShortcutTests: XCTestCase {
         let suite = "selectionmath.model.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
-        let model = AppModel(defaults: defaults)
+        let system = FakeHotkeySystem()
+        let model = AppModel(defaults: defaults, hotkeys: GlobalHotkeys(system: system.calls))
         defer { model.stop() }
         let custom = Shortcut(keyCode: UInt32(kVK_F19), modifiers: UInt32(cmdKey | controlKey | optionKey | shiftKey))
         XCTAssertNil(model.setShortcut(custom, for: .showPanel))
         XCTAssertEqual(model.shortcuts[.showPanel], custom)
         XCTAssertEqual(ShortcutStore.load(from: defaults)[.showPanel], custom)
+        XCTAssertEqual(system.activeShortcuts, model.shortcuts)
         XCTAssertNotNil(model.setShortcut(custom, for: .addSelection))
         XCTAssertEqual(model.shortcuts[.addSelection], Shortcut.defaults[.addSelection])
         XCTAssertNotNil(model.setShortcut(Shortcut(keyCode: UInt32(kVK_ANSI_K), modifiers: UInt32(shiftKey)), for: .captureArea))
@@ -80,5 +82,92 @@ final class ShortcutTests: XCTestCase {
         let shortcut = Shortcut(keyCode: UInt16(kVK_ANSI_K), flags: [.command, .shift, .capsLock])
         XCTAssertEqual(shortcut.modifiers, UInt32(cmdKey | shiftKey))
         XCTAssertEqual(shortcut.keyCode, UInt32(kVK_ANSI_K))
+    }
+
+    @MainActor
+    func testFailureOfAnotherShortcutRollsBackTheWholeChange() throws {
+        let suite = "selectionmath.rollback.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let system = FakeHotkeySystem()
+        let model = AppModel(defaults: defaults, hotkeys: GlobalHotkeys(system: system.calls))
+        defer { model.stop() }
+        model.resumeShortcuts()
+        let custom = Shortcut(keyCode: UInt32(kVK_F19), modifiers: UInt32(cmdKey | shiftKey))
+        system.failOnce = [.addSelection]
+        XCTAssertNotNil(model.setShortcut(custom, for: .showPanel))
+        XCTAssertEqual(model.shortcuts, Shortcut.defaults)
+        XCTAssertEqual(ShortcutStore.load(from: defaults), Shortcut.defaults)
+        XCTAssertEqual(system.activeShortcuts, Shortcut.defaults)
+    }
+
+    @MainActor
+    func testDefaultResetFailurePreservesCustomSettingsAndRegistrations() throws {
+        let suite = "selectionmath.reset-shortcuts.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let system = FakeHotkeySystem()
+        let model = AppModel(defaults: defaults, hotkeys: GlobalHotkeys(system: system.calls))
+        defer { model.stop() }
+        let custom = Shortcut(keyCode: UInt32(kVK_F19), modifiers: UInt32(cmdKey | shiftKey))
+        XCTAssertNil(model.setShortcut(custom, for: .showPanel))
+        let previous = model.shortcuts
+        system.failOnce = [.captureArea]
+        XCTAssertNotNil(model.resetShortcuts())
+        XCTAssertEqual(model.shortcuts, previous)
+        XCTAssertEqual(ShortcutStore.load(from: defaults), previous)
+        XCTAssertEqual(system.activeShortcuts, previous)
+        XCTAssertNil(model.resetShortcuts())
+        XCTAssertEqual(model.shortcuts, Shortcut.defaults)
+        XCTAssertEqual(ShortcutStore.load(from: defaults), Shortcut.defaults)
+        XCTAssertEqual(system.activeShortcuts, Shortcut.defaults)
+    }
+
+    @MainActor
+    func testFailedRollbackReportsUnavailableWithoutPersistingTheChange() throws {
+        let suite = "selectionmath.failed-rollback.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let system = FakeHotkeySystem()
+        let model = AppModel(defaults: defaults, hotkeys: GlobalHotkeys(system: system.calls))
+        defer { model.stop() }
+        model.resumeShortcuts()
+        system.failAlways = [.addSelection]
+        let custom = Shortcut(keyCode: UInt32(kVK_F19), modifiers: UInt32(cmdKey | shiftKey))
+        XCTAssertEqual(model.setShortcut(custom, for: .showPanel), L("shortcut.unavailable"))
+        XCTAssertTrue(model.isError)
+        XCTAssertEqual(model.message, L("shortcut.unavailable"))
+        XCTAssertEqual(model.shortcuts, Shortcut.defaults)
+        XCTAssertEqual(ShortcutStore.load(from: defaults), Shortcut.defaults)
+        XCTAssertNil(system.activeShortcuts[.addSelection])
+        XCTAssertEqual(system.activeShortcuts[.showPanel], Shortcut.defaults[.showPanel])
+    }
+}
+
+@MainActor
+private final class FakeHotkeySystem {
+    var failOnce: Set<ShortcutAction> = []
+    var failAlways: Set<ShortcutAction> = []
+    private var nextID = 100
+    private var active: [EventHotKeyRef: (ShortcutAction, Shortcut)] = [:]
+
+    var activeShortcuts: [ShortcutAction: Shortcut] {
+        Dictionary(uniqueKeysWithValues: active.values.map { ($0.0, $0.1) })
+    }
+
+    var calls: GlobalHotkeys.SystemCalls {
+        GlobalHotkeys.SystemCalls(
+            install: { _, _ in OpaquePointer(bitPattern: 1) },
+            register: { [self] shortcut, id in
+                guard let action = ShortcutAction(hotkeyID: id.id),
+                      failOnce.remove(action) == nil, !failAlways.contains(action) else { return nil }
+                nextID += 1
+                let ref = OpaquePointer(bitPattern: nextID)!
+                active[ref] = (action, shortcut)
+                return ref
+            },
+            unregister: { [self] ref in active.removeValue(forKey: ref) },
+            removeHandler: { _ in }
+        )
     }
 }

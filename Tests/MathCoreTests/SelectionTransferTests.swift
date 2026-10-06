@@ -3,6 +3,30 @@ import XCTest
 
 final class SelectionTransferTests: XCTestCase {
     @MainActor
+    func testCapturePreservesSpacedSignsExponentsAndSkippedWarnings() async throws {
+        let session = CalculatorSession()
+        let transfer = SelectionTransfer(session: session)
+        let io = FakeSelectionIO()
+        io.exposedText = "( $1,234.56 ) | -  5 | 1.2K,40"
+        let exposed = try await transfer.capture(using: io)
+        XCTAssertTrue(exposed.accepted)
+        XCTAssertEqual(exposed.skipped, ["1.2K"])
+        XCTAssertEqual(session.operands.map(\.value), [Decimal(string: "-1234.56")!, -5, 40])
+        XCTAssertEqual(io.copyCount, 0)
+
+        session.reset()
+        session.style = .turkish
+        io.exposedText = nil
+        io.copiedText = "1.234.567e2 | −  ₺ 5,60 | Q3"
+        let copied = try await transfer.capture(using: io)
+        XCTAssertTrue(copied.accepted)
+        XCTAssertTrue(copied.clipboardRestored)
+        XCTAssertEqual(copied.skipped, ["Q3"])
+        XCTAssertEqual(session.operands.map(\.value), [123456700, Decimal(string: "-5.6")!])
+        XCTAssertEqual(io.currentText, "previous clipboard")
+    }
+
+    @MainActor
     func testCanvasCellIsTransferredWithoutSelectedText() async throws {
         let session = CalculatorSession()
         let transfer = SelectionTransfer(session: session)

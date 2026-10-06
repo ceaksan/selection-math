@@ -58,19 +58,25 @@ public enum NumberParser {
         let dottedDecimal = style == .turkish ? "|[0-9]+\\.[0-9]+|\\.[0-9]+" : ""
         let digits = "(?:[0-9]{1,3}(?:\(group)[0-9]{3})+(?:\(point)[0-9]+)?\(dottedDecimal)|[0-9]+(?:\(point)[0-9]+)?|\(point)[0-9]+)"
         let number = "\(digits)(?:[eE][-+]?[0-9]+)?"
-        let percent = "(?:[ \\t]*%)?"
-        let prefix = "(?:[-+−][ ]?(?:\\p{Sc}[ ]?)?|\\p{Sc}[ ]?[-+−]?)?"
-        let parenthesized = "\\((?:\\p{Sc}[ ]?)?\(number)\(percent)\\)"
+        let space = "[\\p{Zs}\\t]*"
+        let percent = "(?:\(space)%)?"
+        let prefix = "(?:[-+−]\(space)(?:\\p{Sc}\(space))?|\\p{Sc}\(space)(?:[-+−]\(space))?)?"
+        let parenthesized = "\\(\(space)(?:\\p{Sc}\(space))?\(number)\(percent)\(space)\\)"
         let pattern = "(?<![\\p{L}\\p{N}_.])(?:\(parenthesized)|\(prefix)\(number)\(percent))(?![\\p{L}\\p{N}_.])"
         let regex = try NSRegularExpression(pattern: pattern)
         return regex.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { Range($0.range, in: text) }
     }
 
     private static func skipped(in text: String, matched: [Range<String.Index>]) -> [String] {
-        guard let chunks = try? NSRegularExpression(pattern: "[^\\s|]*\\p{N}[^\\s|]*") else { return [] }
-        return chunks.matches(in: text, range: NSRange(text.startIndex..., in: text)).compactMap { result in
-            guard let range = Range(result.range, in: text), !matched.contains(where: { $0.overlaps(range) }) else { return nil }
-            return String(text[range]).trimmingCharacters(in: CharacterSet(charactersIn: ",.;:"))
+        let remainder = NSMutableString(string: text)
+        for range in matched.reversed() {
+            remainder.replaceCharacters(in: NSRange(range, in: text), with: " ")
+        }
+        let unparsed = remainder as String
+        guard let chunks = try? NSRegularExpression(pattern: "[^\\s|,;]*\\p{N}[^\\s|,;]*") else { return [] }
+        return chunks.matches(in: unparsed, range: NSRange(unparsed.startIndex..., in: unparsed)).compactMap { result in
+            guard let range = Range(result.range, in: unparsed) else { return nil }
+            return String(unparsed[range]).trimmingCharacters(in: CharacterSet(charactersIn: ",.;:"))
         }
     }
 
@@ -78,16 +84,19 @@ public enum NumberParser {
         let parenthesized = raw.hasPrefix("(") && raw.hasSuffix(")")
         let body = parenthesized ? String(raw.dropFirst().dropLast()) : raw
         let percent = body.contains("%")
-        var normalized = body
+        let parts = body
             .replacingOccurrences(of: "−", with: "-")
             .replacingOccurrences(of: "[\\p{Sc}%\\s]", with: "", options: .regularExpression)
-        let validTurkishGrouping = normalized.range(of: "^[-+]?[0-9]{1,3}(?:\\.[0-9]{3})+$", options: .regularExpression) != nil
-        let dotIsDecimal = style == .turkish && normalized.contains(".") && !normalized.contains(",") && !validTurkishGrouping
+            .components(separatedBy: CharacterSet(charactersIn: "eE"))
+        var mantissa = parts[0]
+        let validTurkishGrouping = mantissa.range(of: "^[-+]?[0-9]{1,3}(?:\\.[0-9]{3})+$", options: .regularExpression) != nil
+        let dotIsDecimal = style == .turkish && mantissa.contains(".") && !mantissa.contains(",") && !validTurkishGrouping
         if style == .english || dotIsDecimal {
-            normalized = normalized.replacingOccurrences(of: ",", with: "")
+            mantissa = mantissa.replacingOccurrences(of: ",", with: "")
         } else {
-            normalized = normalized.replacingOccurrences(of: ".", with: "").replacingOccurrences(of: ",", with: ".")
+            mantissa = mantissa.replacingOccurrences(of: ".", with: "").replacingOccurrences(of: ",", with: ".")
         }
+        let normalized = mantissa + (parts.count == 2 ? "e" + parts[1] : "")
         guard var value = Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")),
               !value.isNaN else { throw MathError.invalidNumber }
         if parenthesized { value = -value }

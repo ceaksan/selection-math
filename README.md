@@ -34,7 +34,7 @@ Use the compact view button in the header to shrink the panel to the result, the
 | Capture area | Control + Option + S |
 | Show calculator | Control + Option + P |
 
-Change shortcuts in Settings, from the gear button or the menu bar menu. Each shortcut needs Command, Control, or Option, and two actions cannot share one. When another app holds a combination, registration fails and the previous shortcut stays active. macOS reserves some combinations without reporting a conflict; those never reach the app. The defaults overlap with VoiceOver commands, so VoiceOver users should choose other combinations.
+Change shortcuts in Settings, from the gear button or the menu bar menu. Each shortcut needs Command, Control, or Option, and two actions cannot share one. Changes and resetting to defaults are saved only when all three shortcuts register successfully. On failure, the app keeps the previous settings and attempts to restore their registrations. If another app also prevents that restore, an error is shown; choose another combination or use the buttons. macOS reserves some combinations without reporting a conflict; those never reach the app. The defaults overlap with VoiceOver commands, so VoiceOver users should choose other combinations.
 
 Closing the panel hides it. Quit from the menu bar menu. Opening the app a second time shows the existing panel.
 
@@ -45,6 +45,7 @@ The initial format matches English-formatted tables: `310,872` is 310872 and `3.
 - Whitespace, line breaks, tabs, and vertical bars separate numbers. In English mode, a comma that does not form a valid thousands group is also a separator.
 - Parenthesized numbers are negative, following spreadsheet convention: `(1,234)` is -1234.
 - A currency symbol may precede the number, with the sign on either side: `-$1,234.56`, `$-5`, and `($7)` are negative. Exponent notation such as `1e3` is read as 1000.
+- Spaces and tabs around a sign or inside parentheses preserve negativity: `-  5` is -5 and `( $1,234.56 )` is -1234.56. Grouped mantissas retain their format in exponent notation: Turkish `1.234.567e2` is 123456700.
 - Number-like fragments that are not plain numbers, such as `Q3` or `1.2K`, are skipped. The other numbers are added and the status message lists what was skipped.
 - An edit is read with the number format that was active when editing began.
 - Percentages keep their label and are stored as fractions. Addition, subtraction, and average of percentages display a percentage. A difference between percentages is shown in percentage points (`pp`), and Copy result copies the bare number.
@@ -91,7 +92,7 @@ dist/SelectionMath.app/Contents/MacOS/SelectionMath --ocr-check /absolute/path/t
 
 ## Validation boundaries
 
-Automated tests cover parsing, arithmetic, edits, ordering, reset and its undo, selection transfer through an OS I/O test double, pasteboard snapshot and restore on private pasteboards, layout-aware key translation, shortcut validation and storage, status message expiry, and localization coverage. The following still require interactive verification on a desktop:
+Automated tests cover parsing, arithmetic, edits, ordering, reset and its undo, selection transfer through an OS I/O test double, pasteboard snapshot and restore on private pasteboards, layout-aware key translation, shortcut validation and storage, status message expiry, and localization coverage. Shortcut update and rollback tests enter through AppModel with only Carbon system calls replaced. Pasteboard and Vision integration tests require working macOS services and may fail in a restricted runner. The following still require interactive verification on a desktop:
 
 - actual shortcut delivery and Copy support in each application
 - permission prompts
@@ -114,6 +115,11 @@ Automated tests cover parsing, arithmetic, edits, ordering, reset and its undo, 
 | Reset during Copy restores the clipboard without stale data | `testResetDuringCopyRestoresClipboardWithoutAddingStaleData` |
 | Parenthesized numbers are negative | `testParenthesizedNumbersAreNegative` |
 | Currency signs and exponents keep their value | `testCurrencySignsAndExponentsKeepTheirValue` |
+| Grouped Turkish exponents and spaced negative signs retain their values | `testGroupedTurkishExponentsKeepTheirMagnitude`, `testWhitespacePreservesNegativeSigns` |
+| Unreadable fragments next to comma-separated numbers are reported | `testSkippedFragmentsBesideCommaSeparatedNumbersAreReported` |
+| Accessibility and Copy captures preserve signs, exponents, and skipped warnings | `testCapturePreservesSpacedSignsExponentsAndSkippedWarnings` |
+| Failure of any shortcut rolls back an update or a reset without saving it | `testFailureOfAnotherShortcutRollsBackTheWholeChange`, `testDefaultResetFailurePreservesCustomSettingsAndRegistrations` |
+| A failed registration rollback is reported | `testFailedRollbackReportsUnavailableWithoutPersistingTheChange` |
 | Unparsed number-like fragments are reported | `testUnreadableNumberLikeTokensAreReportedAsSkipped` |
 | An edit keeps the format it started with | `testEditKeepsTheFormatItStartedWith` |
 | Corrupt or invalid shortcuts fall back to defaults; changes persist through the model | `testOutOfRangeStoredShortcutsFallBackToDefaults`, `testSettingAShortcutThroughTheModelRegistersAndPersistsIt` |
@@ -134,6 +140,7 @@ Automated tests cover parsing, arithmetic, edits, ordering, reset and its undo, 
 - [ADR-003: English interface and shared native styles](docs/adr/ADR-003-english-reference-based-interface.md)
 - [ADR-004: Release hardening, compact mode, and customizable shortcuts](docs/adr/ADR-004-hardening-compact-mode-and-shortcuts.md)
 - [ADR-005: Review-driven transfer and parser guarantees](docs/adr/ADR-005-review-driven-transfer-and-parser-guarantees.md)
+- [ADR-006: Shortcut registration test boundary](docs/adr/ADR-006-shortcut-registration-test-boundary.md)
 - [Design guide](docs/design-guide.md)
 
 ## License

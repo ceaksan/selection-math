@@ -2,6 +2,29 @@ import XCTest
 @testable import MathCore
 
 final class CalculatorTests: XCTestCase {
+    @MainActor
+    func testGroupedTurkishExponentsKeepTheirMagnitude() throws {
+        let session = CalculatorSession()
+        session.style = .turkish
+        try session.accept("1.234e3 | 1.234.567e2", source: "Table", generation: session.generation)
+        XCTAssertEqual(session.operands.map(\.value), [1234000, 123456700])
+    }
+
+    @MainActor
+    func testWhitespacePreservesNegativeSigns() throws {
+        let session = CalculatorSession()
+        try session.accept("( $1,234.56 ) | -  5", source: "Screen", generation: session.generation)
+        XCTAssertEqual(session.operands.map(\.value), [Decimal(string: "-1234.56")!, -5])
+    }
+
+    @MainActor
+    func testSkippedFragmentsBesideCommaSeparatedNumbersAreReported() throws {
+        let session = CalculatorSession()
+        let result = try session.accept("1.2K,40 Q3,10", source: "Table", generation: session.generation)
+        XCTAssertEqual(session.operands.map(\.value), [40, 10])
+        XCTAssertEqual(result.skipped, ["1.2K", "Q3"])
+    }
+
     func testDotDecimalRemainsOneNumberInTurkishFormat() throws {
         let values = try NumberParser.parse("5.60", style: .turkish)
         XCTAssertEqual(values.map(\.value), [Decimal(string: "5.60")!])

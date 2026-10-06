@@ -64,8 +64,7 @@ struct SettingsView: View {
             }
             Button(L("shortcut.resetDefaults")) {
                 stopRecording()
-                model.resetShortcuts()
-                error = nil
+                error = model.resetShortcuts()
             }.buttonStyle(SoftButtonStyle(compact: true))
         }
     }

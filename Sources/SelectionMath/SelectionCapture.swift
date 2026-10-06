@@ -58,11 +58,12 @@ final class AppModel: ObservableObject {
     private var screenGeneration: UInt = 0
     private let defaults: UserDefaults
     private let screenReader = ScreenReader()
-    private let hotkeys = GlobalHotkeys()
+    private let hotkeys: GlobalHotkeys
     private lazy var transfer = SelectionTransfer(session: session)
 
-    init(defaults: UserDefaults = .standard) {
+    init(defaults: UserDefaults = .standard, hotkeys: GlobalHotkeys? = nil) {
         self.defaults = defaults
+        self.hotkeys = hotkeys ?? GlobalHotkeys()
         shortcuts = ShortcutStore.load(from: defaults)
         compact = defaults.bool(forKey: "compactMode")
     }
@@ -124,20 +125,25 @@ final class AppModel: ObservableObject {
         }
         var updated = shortcuts
         updated[action] = shortcut
-        if hotkeys.register(updated).contains(action) {
-            Log.shortcuts.error("Registration failed for \(action.rawValue, privacy: .public)")
-            registerShortcuts()
-            return String(format: L("shortcut.taken"), shortcut.symbols(layout: KeyboardLayout.current()))
+        return applyShortcuts(updated)
+    }
+
+    func resetShortcuts() -> String? { applyShortcuts(Shortcut.defaults) }
+
+    private func applyShortcuts(_ updated: [ShortcutAction: Shortcut]) -> String? {
+        let failed = hotkeys.register(updated)
+        if !failed.isEmpty {
+            Log.shortcuts.error("Registration failed for \(failed.map(\.rawValue).joined(separator: ","), privacy: .public)")
+            let rollbackFailed = registerShortcuts()
+            guard rollbackFailed.isEmpty else { return L("shortcut.unavailable") }
+            return failed.map { action in
+                let combination = updated[action]?.symbols(layout: KeyboardLayout.current()) ?? L(action.titleKey)
+                return String(format: L("shortcut.taken"), combination)
+            }.joined(separator: " ")
         }
         shortcuts = updated
         ShortcutStore.save(updated, to: defaults)
         return nil
-    }
-
-    func resetShortcuts() {
-        shortcuts = Shortcut.defaults
-        ShortcutStore.save(shortcuts, to: defaults)
-        registerShortcuts()
     }
 
     func captureSelection() {
@@ -280,10 +286,12 @@ final class AppModel: ObservableObject {
         ])
     }
 
-    private func registerShortcuts() {
+    @discardableResult
+    private func registerShortcuts() -> [ShortcutAction] {
         let failed = hotkeys.register(shortcuts)
-        guard !failed.isEmpty else { return }
+        guard !failed.isEmpty else { return [] }
         Log.shortcuts.error("Registration failed for \(failed.map(\.rawValue).joined(separator: ","), privacy: .public)")
         inform("shortcut.unavailable", error: true)
+        return failed
     }
 }
