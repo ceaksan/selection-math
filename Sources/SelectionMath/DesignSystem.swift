@@ -52,6 +52,7 @@ enum Design {
     static let note = adaptive(0xFAF6E9, 0x32312D)
     static let accent = adaptive(0x006DDB, 0x66B5FF)
     static let action = Color(nsColor: rgb(0x0070DF))
+    static let focus = accent.opacity(0.45)
     static let danger = adaptive(0xB9233B, 0xFF8D9C)
 
     static var windowColor: NSColor { NSColor(canvas) }
@@ -101,8 +102,7 @@ struct SoftButtonStyle: ButtonStyle {
                 .foregroundStyle(kind == .primary ? Color.white : kind == .destructive ? Design.danger : Design.text)
                 .background(fill, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
                 .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous)
-                    .strokeBorder(focused ? Design.accent : Design.border.opacity(kind == .secondary ? 0.65 : 0),
-                                  lineWidth: focused ? 2 : 1))
+                    .strokeBorder(focused ? Design.focus : Design.border.opacity(kind == .secondary ? 0.65 : 0)))
                 .overlay(RoundedRectangle(cornerRadius: 10).fill(.black.opacity(configuration.isPressed ? 0.09 : 0)))
                 .shadow(color: .black.opacity(kind == .primary && enabled ? 0.09 : 0), radius: 3, y: 2)
                 .opacity(enabled ? 1 : 0.4)
@@ -128,13 +128,33 @@ struct SoftSegmented<Value: Hashable>: View {
                         .foregroundStyle(selected ? Design.accent : Design.muted)
                         .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
+                .buttonStyle(FocusRingStyle(radius: 7))
                 .accessibilityAddTraits(selected ? .isSelected : [])
             }
         }
         .padding(3)
         .background(well, in: RoundedRectangle(cornerRadius: 10))
+    }
+}
+
+struct FocusRingStyle: ButtonStyle {
+    var radius: CGFloat
+
+    func makeBody(configuration: Configuration) -> some View {
+        FocusRing(configuration: configuration, radius: radius)
+    }
+
+    private struct FocusRing: View {
+        let configuration: ButtonStyleConfiguration
+        let radius: CGFloat
+        @Environment(\.isFocused) private var focused
+
+        var body: some View {
+            configuration.label
+                .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .strokeBorder(focused ? Design.focus : Color.clear))
+                .opacity(configuration.isPressed ? 0.75 : 1)
+        }
     }
 }
 

@@ -23,6 +23,7 @@ struct PanelView: View {
         .foregroundStyle(Design.text)
         .background(Design.canvas)
         .tint(Design.accent)
+        .focusEffectDisabled()
         .preferredColorScheme(appearance.colorScheme)
         .onAppear { NSApp.appearance = appearance.nsAppearance }
         .onChange(of: appearance) { _, value in NSApp.appearance = value.nsAppearance }
@@ -53,7 +54,7 @@ struct PanelView: View {
                     Text(session.operation.symbol + "  " + L("operation." + session.operation.rawValue))
                         .font(.system(size: 12, weight: .semibold))
                 }
-                .menuStyle(.borderlessButton).fixedSize().focusEffectDisabled()
+                .menuStyle(.borderlessButton).fixedSize().focusable(false).focusEffectDisabled()
                 .accessibilityLabel(L("operation." + session.operation.rawValue))
                 Spacer()
                 if session.operation == .change && session.canSwapPair { swapButton }
@@ -107,7 +108,7 @@ struct PanelView: View {
             Text(L("capture.reviewTitle")).font(.system(size: 18, weight: .semibold))
             Text(L("capture.reviewOCR")).font(.system(size: 13)).foregroundStyle(Design.muted)
             TextEditor(text: $model.screenText).font(.system(.body, design: .monospaced))
-                .scrollContentBackground(.hidden).padding(10).frame(height: 130)
+                .scrollContentBackground(.hidden).padding(10).frame(height: 130).focusEffectDisabled(false)
                 .background(Design.surface, in: RoundedRectangle(cornerRadius: 10))
             if model.isError { Text(model.message).font(.caption).foregroundStyle(Design.danger) }
             HStack {
@@ -120,6 +121,7 @@ struct PanelView: View {
             }
         }
         .padding(24).frame(width: 350).foregroundStyle(Design.text).background(Design.canvas)
+        .focusEffectDisabled()
     }
 
     private var header: some View {
@@ -214,7 +216,7 @@ struct PanelView: View {
                                         in: RoundedRectangle(cornerRadius: 9))
                             .foregroundStyle(session.operation == operation ? Design.accent : Design.muted)
                     }
-                    .buttonStyle(.plain).focusEffectDisabled().help(L("operation." + operation.rawValue))
+                    .buttonStyle(FocusRingStyle(radius: 9)).help(L("operation." + operation.rawValue))
                     .accessibilityLabel(L("operation." + operation.rawValue))
                     .accessibilityIdentifier("operation-" + operation.rawValue)
                     .accessibilityAddTraits(session.operation == operation ? .isSelected : [])
@@ -241,7 +243,7 @@ struct PanelView: View {
         } label: {
             secondaryOperationLabel(active: active)
         }
-        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().focusEffectDisabled().help(L("operations.more"))
+        .menuStyle(.borderlessButton).menuIndicator(.hidden).fixedSize().focusable(false).focusEffectDisabled().help(L("operations.more"))
         .accessibilityLabel(label)
         .accessibilityAddTraits(active ? .isSelected : [])
     }
@@ -334,7 +336,7 @@ struct PanelView: View {
                 DisclosureGroup(L("manual")) {
                     HStack {
                         TextField(L("manual.placeholder"), text: $manualText).onSubmit(addManual)
-                            .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.roundedBorder).focusEffectDisabled(false)
                         Button(L("add"), action: addManual).disabled(manualText.isEmpty)
                             .buttonStyle(SoftButtonStyle(compact: true))
                     }.padding(.top, 6)
@@ -383,7 +385,7 @@ private struct OperandRow: View {
                 Text(String(format: "%02d", index + 1)).font(.caption.monospacedDigit())
                     .foregroundStyle(Design.muted).frame(width: 20)
                 if editing {
-                    TextField(L("edit"), text: $draft).textFieldStyle(.roundedBorder)
+                    TextField(L("edit"), text: $draft).textFieldStyle(.roundedBorder).focusEffectDisabled(false)
                         .focused($focused).onSubmit(save)
                         .onExitCommand { editing = false }
                         .accessibilityIdentifier("operand-edit-\(index)")

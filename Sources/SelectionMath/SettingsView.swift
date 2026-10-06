@@ -35,6 +35,7 @@ struct SettingsView: View {
         }
         .frame(width: 380).frame(maxHeight: 620).fixedSize(horizontal: false, vertical: true)
         .foregroundStyle(Design.text).background(Design.canvas)
+        .focusEffectDisabled()
         .onDisappear { stopRecording() }
     }
 

@@ -123,6 +123,7 @@ Automated tests cover parsing, arithmetic, edits, ordering, reset and its undo, 
 | Unparsed number-like fragments are reported | `testUnreadableNumberLikeTokensAreReportedAsSkipped`, `testCommaBeforeSuffixSkipsTheWholeFragment` |
 | A tab after a placeholder sign does not negate the next cell | `testTabAfterPlaceholderSignDoesNotNegateNextCell` |
 | Swapping two operands reverses percentage change | `testSwapPairReversesTwoOperandsForPercentageChange` |
+| Showing the panel does not focus a control automatically; an active text edit keeps focus | `testBecomingKeyClearsAutomaticControlFocus`, `testBecomingKeyKeepsAnActiveTextEdit` |
 | An edit keeps the format it started with | `testEditKeepsTheFormatItStartedWith` |
 | Corrupt or invalid shortcuts fall back to defaults; changes persist through the model | `testOutOfRangeStoredShortcutsFallBackToDefaults`, `testSettingAShortcutThroughTheModelRegistersAndPersistsIt` |
 | Region selection maps to image pixels; text recognition reads rendered numbers | `testSelectionMapsToImagePixelsOnARetinaScreen`, `testTextRecognitionReadsRenderedNumbers` |
