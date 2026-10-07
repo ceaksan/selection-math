@@ -113,6 +113,7 @@
 "about.github" = "GitHub";
 "about.x" = "X";
 "about.source" = "Source code";
+"about.coffee" = "Buy me a coffee";
 "appearance" = "Appearance";
 "appearance.system" = "System";
 "appearance.light" = "Light";

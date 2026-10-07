@@ -138,6 +138,11 @@ struct SettingsView: View {
             }
             .padding(.vertical, 4)
             .background(Design.surface, in: RoundedRectangle(cornerRadius: 12))
+            Link(destination: About.coffee) {
+                Label(L("about.coffee"), systemImage: "cup.and.saucer").frame(maxWidth: .infinity)
+            }
+            .buttonStyle(SoftButtonStyle())
+            .accessibilityIdentifier("buy-me-a-coffee")
         }
     }
 

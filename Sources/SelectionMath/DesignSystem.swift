@@ -29,6 +29,7 @@ enum About {
         ("about.x", "at", "@ceaksan", URL(string: "https://x.com/ceaksan")!),
         ("about.source", "shippingbox", "selection-math", URL(string: "https://github.com/ceaksan/selection-math")!)
     ]
+    static let coffee = URL(string: "https://buymeacoffee.com/aob4huniy")!
 }
 
 enum AppVersion {
